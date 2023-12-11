@@ -1,0 +1,100 @@
+---
+title: "NHANES data analysis"
+author: "Yucheng Shen"
+date: "2023-12-11"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Analysis of Weight Categories Among Adults in the United States
+
+## Introduction
+In this project, we would explore a dataset about the weight categories of adults aged 20 and over in the United States. This dataset encompasses a range of years and presents data on normal weight, overweight, and obesity percentages among the adult population. This analysis is crucial in understanding the trends and patterns in adult weight categories, which are pivotal for public health planning and interventions.
+
+## Dataset Overview
+The dataset is from data.gov, could be found at https://catalog.data.gov/dataset/normal-weight-overweight-and-obesity-among-adults-aged-20-and-over-by-selected-characteris-8e2b1. It has several key features, including year, age groups, and estimates of the population percentages in different weight categories. The data provides a rich source for examining changes over time and across different demographic slices.
+
+## Research Questions
+The analysis would base on these research questions:
+
+1.Is there a significant difference in the average BMI across different age groups??
+
+2.What are the top 3 periods with the highest average percentages for obesity?
+
+3.What is the proportion of each weight category in the most recent year available in the dataset?
+
+```{r Data Loading, echo=FALSE}
+library(ggplot2)
+library(dplyr)
+weight_data <- read.csv("weightData.csv")
+head(weight_data)
+```
+## Research Question 1 How has the percentage of adults in the different weight categories changed over the years?
+We will group the data by 'YEAR' and 'PANEL' (which represents weight categories) and calculate the average percentage for each category over the years
+```{r Q1, echo=FALSE}
+age_group_averages <- weight_data %>%
+  group_by(AGE) %>%
+  summarize(Average_BMI = mean(ESTIMATE, na.rm = TRUE))
+
+# Bar plot of average BMI by age group
+ggplot(age_group_averages, aes(x = AGE, y = Average_BMI, fill = AGE)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Average BMI by Age Group", x = "Age Group", y = "Average BMI") +
+  theme_minimal()
+```
+We can find that the Average BMI keeps rising as the Age Group goes older and it starts declining after 64 years.
+
+## Research Question 2: What are the top 3 periods with the highest average percentages for obesity?
+This analysis aims to identify the years with the highest average obesity rates. We will calculate the average percentage of obesity for each year and then identify the top three years with the highest rates.
+```{r Q2, echo=FALSE}
+# Filter for obesity data
+obesity_data <- filter(weight_data, grepl("obesity", PANEL, ignore.case = TRUE))
+
+# Calculate average obesity rate per year
+average_obesity_by_year <- obesity_data %>%
+  group_by(YEAR) %>%
+  summarize(Average_Obesity = mean(ESTIMATE, na.rm = TRUE)) %>%
+  arrange(desc(Average_Obesity))
+
+# Get top 3 years with highest average obesity rates
+top_3_obesity_periods <- head(average_obesity_by_year, 3)
+
+# Print the results
+print(top_3_obesity_periods)
+
+```
+The result indicates that for the time periods 2015-2018, 2013-2016, and 2009-2012, the average obesity rates were approximately 20.26%, 19.40%, and 19.32% respectively. These are the highest among all the time periods included in our dataset.
+
+
+## Research Question 3: What is the proportion of each weight category in the most recent year available in the dataset?
+To visualize the current distribution of weight categories, we will use a pie chart. This chart will show the proportion of each weight category (normal weight, overweight, obesity) in the most recent year of data.
+```{r Q3, echo=FALSE}
+
+# Define the function
+latest_year_proportions_filtered <- function(data) {
+  latest_year <- max(as.numeric(substr(data$YEAR, nchar(data$YEAR) - 3, nchar(data$YEAR))))
+  filtered_data <- subset(data, PANEL %in% c('Obesity (BMI greater than or equal to 30.0)',
+                                             'Overweight or obese (BMI greater than or equal to 25.0)',
+                                             'Normal weight (BMI from 18.5 to 24.9)'))
+  latest_data <- subset(filtered_data, as.numeric(substr(YEAR, nchar(YEAR) - 3, nchar(YEAR))) == latest_year)
+  proportions <- aggregate(ESTIMATE ~ PANEL, data = latest_data, sum)
+  return(list(proportions = proportions, latest_year = latest_year))
+}
+
+
+# Applying the function
+result <- latest_year_proportions_filtered(weight_data)
+proportions <- result$proportions
+latest_year <- result$latest_year
+
+# Plotting
+pie(proportions$ESTIMATE, labels = proportions$PANEL, main = paste('Proportion of Weight Categories in', latest_year))
+```
+
+# Conclusion
+Through the analysis of the dataset "Normal weight, overweight, and obesity among adults aged 20 and over, by selected characteristics, United States," several key insights have been revealed. These findings are instrumental for public health officials, policymakers, and healthcare providers in understanding and addressing the challenges related to weight management in the adult population. The data underscores the need for targeted health interventions and continued monitoring of weight trends to combat the rising prevalence of overweight and obesity, which are known risk factors for various chronic diseases.
+
+In summary, the dataset not only highlights the current state of adult weight categories in the United States but also serves as a call to action for tailored health initiatives and policies to improve the overall health and well-being of the population.
